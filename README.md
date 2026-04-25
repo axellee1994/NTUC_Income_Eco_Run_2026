@@ -1,6 +1,6 @@
 # Income Eco Run 2026 – Results Viewer
 
-Built by **axlee** because the official results page was incredibly shitty and had redundant information on it.
+Built by **axellee1994** because the official results page was incredibly shitty and had redundant information on it.
 
 The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb/race/255209) only shows your name, distance, and bib number — no placement, no chip time, nothing useful. So I built my own viewer with one goal: **find out where I actually placed.**
 
