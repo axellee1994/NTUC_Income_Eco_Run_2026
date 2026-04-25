@@ -121,7 +121,11 @@ export async function collectAndFetchAll(code, subEventId, out, onProgress) {
           out.push(r); // immediately visible to caller
           timingJobs.push(
             timingSem(async () => {
-              await fetchSingleTiming(code, r); // mutates r in place
+              try {
+                await fetchSingleTiming(code, r); // mutates r in place
+              } catch {
+                r.chipTimeSec = 0; r.chipTime = null; r.raceStatus = 'UNKNOWN';
+              }
               timingDone++;
               onProgress?.({ searchDone, searchTotal: SEARCH_PHRASES.length, found: out.length, timingDone });
             })

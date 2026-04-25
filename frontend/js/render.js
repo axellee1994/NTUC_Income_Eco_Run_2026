@@ -40,15 +40,36 @@ export function filterAndSort(participants, searchTerm, sortCol, sortDir) {
   return rows;
 }
 
+// ── Security helpers ──────────────────────────────────────────────────────────
+
+// Escapes HTML special characters to prevent XSS when injecting API data via innerHTML
+function escapeHtml(val) {
+  return String(val ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Wraps the first match of `term` in <mark>; both sides are HTML-escaped first
+function highlight(text, term) {
+  const safe = escapeHtml(text ?? '—');
+  if (!term) return safe;
+  const safeTerm = escapeHtml(term);
+  const idx = safe.toLowerCase().indexOf(safeTerm.toLowerCase());
+  if (idx === -1) return safe;
+  return safe.slice(0, idx)
+    + `<mark>${safe.slice(idx, idx + safeTerm.length)}</mark>`
+    + safe.slice(idx + safeTerm.length);
+}
+
+// ── Cell helpers ──────────────────────────────────────────────────────────────
+
 function posCell(pos) {
   if (pos == null) return `<td class="pos">—</td>`;
   const medal = pos === 1 ? ' gold' : pos === 2 ? ' silver' : pos === 3 ? ' bronze' : '';
-  return `<td class="pos${medal}">${pos}</td>`;
+  return `<td class="pos${medal}">${pos}</td>`; // pos is a number we compute — safe
 }
 
 function timeCell(chipTime, chipTimeSec) {
   if (!chipTime && !chipTimeSec) return `<td class="time">—</td>`;
-  return `<td class="time">${chipTime ?? fmtSec(chipTimeSec)}</td>`;
+  return `<td class="time">${chipTime ? escapeHtml(chipTime) : fmtSec(chipTimeSec)}</td>`;
 }
 
 function fmtSec(s) {
@@ -57,23 +78,15 @@ function fmtSec(s) {
            : `${m}:${String(sec).padStart(2,'0')}`;
 }
 
-function highlight(text, term) {
-  const str = String(text ?? '—');
-  if (!term) return str;
-  const idx = str.toLowerCase().indexOf(term.toLowerCase());
-  if (idx === -1) return str;
-  return str.slice(0, idx)
-    + `<mark>${str.slice(idx, idx + term.length)}</mark>`
-    + str.slice(idx + term.length);
-}
-
 function statusBadge(status) {
   if (!status || status === 'UNKNOWN') return '';
   const cls = status === 'COMPLETE' ? 'text-bg-success' : status === 'DNF' ? 'text-bg-danger' : 'text-bg-warning';
-  return `<span class="badge ${cls}">${status}</span>`;
+  return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
 }
 
-export function renderTable(participants, sub, searchTerm, sortCol, sortDir) {
+// ── Public exports ────────────────────────────────────────────────────────────
+
+export function renderTable(participants, _sub, searchTerm, sortCol, sortDir) {
   const rows = filterAndSort(participants, searchTerm, sortCol, sortDir);
   resultsCount.textContent = rows.length
     ? `Showing ${rows.length.toLocaleString()} of ${participants.length.toLocaleString()} participants`

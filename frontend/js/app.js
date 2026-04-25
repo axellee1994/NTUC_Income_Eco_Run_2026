@@ -103,8 +103,17 @@ function currentSub() {
 }
 
 function setInfoBar(sub) {
-  chipRace.innerHTML  = sub ? `<span>${sub.name}</span>` : '—';
-  chipTotal.innerHTML = sub ? `Total: <span>${sub.resultCount?.toLocaleString()}</span>` : '—';
+  if (sub) {
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = sub.name;
+    chipRace.replaceChildren(nameSpan);
+    const countSpan = document.createElement('span');
+    countSpan.textContent = sub.resultCount?.toLocaleString() ?? '';
+    chipTotal.replaceChildren('Total: ', countSpan);
+  } else {
+    chipRace.textContent  = '—';
+    chipTotal.textContent = '—';
+  }
   chipLoaded.textContent = '—';
 }
 
@@ -133,11 +142,15 @@ document.querySelectorAll('thead th.sortable').forEach(th => {
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
+let searchDebounce;
 searchInput.addEventListener('input', () => {
-  state.searchTerm = searchInput.value.trim();
-  if (state.participants.length) {
-    renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
-  }
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    state.searchTerm = searchInput.value.trim();
+    if (state.participants.length) {
+      renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
+    }
+  }, 100);
 });
 
 // ── Race select ───────────────────────────────────────────────────────────────
@@ -242,10 +255,17 @@ async function loadRace(subEventId) {
 
 // ── Bootstrap (called after year is chosen) ───────────────────────────────────
 
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), ms)),
+  ]);
+}
+
 async function initApp() {
   const yearCfg = YEARS[state.selectedYear];
   try {
-    const ev = await getEvent(state.eventCode);
+    const ev = await withTimeout(getEvent(state.eventCode), 8000);
     state.event = ev;
     eventName.textContent = ev.name ?? yearCfg.label;
     state.subEvents = (ev.subEvents ?? []).filter(s => s.resultCount > 0);

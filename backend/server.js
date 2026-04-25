@@ -16,6 +16,34 @@ const MIME = {
   '.ico':  'image/x-icon',
 };
 
+// ── Rate limiter ─────────────────────────────────────────────────────────────
+// 3000 API requests per IP per 60 seconds — generous enough for a full race
+// load (~2700 requests) while blocking runaway scripts or external abuse.
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX       = 3000;
+const rateMap        = new Map(); // ip → { count, windowStart }
+
+function isRateLimited(ip) {
+  const now   = Date.now();
+  const entry = rateMap.get(ip) ?? { count: 0, windowStart: now };
+  if (now - entry.windowStart > RATE_WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+  }
+  entry.count++;
+  rateMap.set(ip, entry);
+  return entry.count > RATE_MAX;
+}
+
+// Prune stale entries every 5 minutes so the map doesn't grow unbounded
+setInterval(() => {
+  const cutoff = Date.now() - RATE_WINDOW_MS;
+  for (const [ip, entry] of rateMap) {
+    if (entry.windowStart < cutoff) rateMap.delete(ip);
+  }
+}, 5 * 60_000).unref();
+
 // ── Static file handler ──────────────────────────────────────────────────────
 function serveStatic(res, urlPath) {
   const relative = urlPath === '/' ? 'index.html' : urlPath.slice(1);
@@ -63,6 +91,12 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname.startsWith('/api/')) {
+    const ip = req.socket.remoteAddress ?? 'unknown';
+    if (isRateLimited(ip)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded. Try again shortly.' }));
+      return;
+    }
     proxyApi(res, url.pathname.slice(5), url.searchParams.toString());
     return;
   }
@@ -71,6 +105,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  Income Eco Run 2026 – Results`);
+  console.log(`\n  Income Eco Run – Results`);
   console.log(`  → http://localhost:${PORT}\n`);
 });
