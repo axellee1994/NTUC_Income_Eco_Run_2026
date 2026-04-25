@@ -3,7 +3,6 @@ const resultsCount = document.getElementById('results-count');
 const progressWrap = document.getElementById('progress-wrap');
 const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
-const chipLoaded   = document.getElementById('chip-loaded');
 
 export function computePositions(participants) {
   const finishers = participants
@@ -58,6 +57,16 @@ function fmtSec(s) {
            : `${m}:${String(sec).padStart(2,'0')}`;
 }
 
+function highlight(text, term) {
+  const str = String(text ?? '—');
+  if (!term) return str;
+  const idx = str.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) return str;
+  return str.slice(0, idx)
+    + `<mark>${str.slice(idx, idx + term.length)}</mark>`
+    + str.slice(idx + term.length);
+}
+
 function statusBadge(status) {
   if (!status || status === 'UNKNOWN') return '';
   const cls = status === 'COMPLETE' ? 'text-bg-success' : status === 'DNF' ? 'text-bg-danger' : 'text-bg-warning';
@@ -78,8 +87,8 @@ export function renderTable(participants, sub, searchTerm, sortCol, sortDir) {
   tbody.innerHTML = rows.map(p => `
     <tr>
       ${posCell(p.position)}
-      <td class="bib">${p.bib ?? '—'}</td>
-      <td class="name">${p.name ?? '—'}</td>
+      <td class="bib">${highlight(p.bib ?? '—', searchTerm)}</td>
+      <td>${highlight(p.name ?? '—', searchTerm)}</td>
       ${timeCell(p.chipTime, p.chipTimeSec)}
       <td>${statusBadge(p.raceStatus)}</td>
     </tr>`).join('');

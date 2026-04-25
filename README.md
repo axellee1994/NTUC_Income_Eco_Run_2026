@@ -37,14 +37,16 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
 
 ## Features
 
-- Year-selection landing page (2024, 2025, 2026)
+- Year-selection landing page (2024, 2025, 2026) with year badge in the navbar for always-visible context
+- First race auto-loads immediately after selecting a year — no extra button click needed
 - Race category dropdown loaded from the live event API
 - Pipelined loading — timing fetches start as soon as each participant is discovered, both phases run concurrently
 - 20 parallel prefix searches (a–z, 10–145) to discover every participant
 - Up to 50 concurrent timing fetches, streamed into the table as they arrive
-- Search by name or bib number
+- Search by name or bib — matching text is highlighted in results
 - Sort by position, bib, name, or chip time
 - Gold/silver/bronze highlights for the top 3
+- Back to top button appears after scrolling, returns to the top smoothly
 - Permanent `localStorage` cache per year — results are final, so reopening any race is instant
 - Switching to a previously loaded race restores it from cache immediately, no button click needed
 - Race dropdown is locked during an active load to prevent mid-flight state corruption
@@ -140,9 +142,9 @@ sudo docker ps -a -q | xargs -r sudo docker rm -f
 
 ## How it works
 
-1. A year-selection screen appears on load. Choosing a year sets the RaceRoster event code and fetches the race list from the API. If that fails, 2026 falls back to the static configs in `races/`.
-2. Clicking **▶ Load Results** fires off 162 prefix searches (a–z, 10–145) at 20 concurrent to discover every participant ID in the selected race.
+1. A year-selection screen appears on load. Choosing a year sets the RaceRoster event code, fetches the race list from the API, then auto-loads the first race. If the API fails, 2026 falls back to the static configs in `races/`.
+2. Loading fires 162 prefix searches (a–z, 10–145) at 20 concurrent to discover every participant ID in the selected race.
 3. Timing fetches begin immediately as participants are discovered — both phases run in parallel rather than sequentially, with up to 50 concurrent timing requests.
-4. The table updates live every 50 records as timing data arrives.
+4. The table updates live every 50 records as timing data arrives. Search matches are highlighted inline.
 5. The completed result set is cached permanently in `localStorage` keyed by year and race ID — subsequent loads are instant.
 6. Switching races checks the cache first. If data is already there it renders immediately; otherwise the **▶ Load Results** button is shown. The race dropdown is disabled while a load is in progress to prevent state corruption.

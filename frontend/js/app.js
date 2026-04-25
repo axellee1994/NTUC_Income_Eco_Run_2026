@@ -10,8 +10,8 @@ pruneExpiredCache();
 
 const landingScreen = document.getElementById('landing-screen');
 const app           = document.getElementById('app');
-const eventLogo     = document.getElementById('event-logo');
 const eventName     = document.getElementById('event-name');
+const yearBadge     = document.getElementById('year-badge');
 const raceSelect    = document.getElementById('race-select');
 const chipRace      = document.getElementById('chip-race');
 const chipTotal     = document.getElementById('chip-total');
@@ -20,6 +20,14 @@ const loadBtn       = document.getElementById('load-btn');
 const searchInput   = document.getElementById('search-input');
 const tbody         = document.getElementById('tbody');
 const backBtn       = document.getElementById('back-btn');
+const backTopBtn    = document.getElementById('back-top-btn');
+
+// ── Back to top ───────────────────────────────────────────────────────────────
+
+window.addEventListener('scroll', () => {
+  backTopBtn.style.display = window.scrollY > 400 ? 'flex' : 'none';
+});
+backTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
 // ── Year selection ────────────────────────────────────────────────────────────
 
@@ -40,8 +48,13 @@ document.querySelectorAll('.btn-year').forEach(btn => {
     // Fetch event data before transitioning so the dashboard appears ready
     await initApp();
 
+    yearBadge.textContent   = year;
+    yearBadge.style.display = 'inline';
     landingScreen.style.display = 'none';
     app.style.display = 'block';
+
+    // Auto-load the first race (cache hit = instant, miss = starts fetch)
+    if (state.selectedId) loadRace(state.selectedId);
 
     // Restore button states for when the user navigates back
     allBtns.forEach(b => {
@@ -67,7 +80,8 @@ backBtn.addEventListener('click', () => {
   state.searchTerm    = '';
 
   // Reset UI
-  eventLogo.style.display = 'none';
+  yearBadge.textContent   = '';
+  yearBadge.style.display = 'none';
   eventName.textContent   = 'Loading event…';
   raceSelect.innerHTML    = '<option value="">Loading races…</option>';
   raceSelect.disabled     = true;
@@ -234,11 +248,6 @@ async function initApp() {
     const ev = await getEvent(state.eventCode);
     state.event = ev;
     eventName.textContent = ev.name ?? yearCfg.label;
-    if (ev.logo) {
-      eventLogo.src = ev.logo;
-      eventLogo.style.display = 'block';
-    }
-
     state.subEvents = (ev.subEvents ?? []).filter(s => s.resultCount > 0);
 
     raceSelect.innerHTML = state.subEvents.map(s =>

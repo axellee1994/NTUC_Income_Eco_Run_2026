@@ -54,6 +54,50 @@
 }
 .btn-year:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ── Year badge ──────────────────────────────────────────────────────────── */
+.year-badge {
+  background: #ff7600;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 0.3em 0.65em;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Back to top button ──────────────────────────────────────────────────── */
+.btn-back-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ff7600;
+  color: #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: background 0.15s, transform 0.15s;
+  z-index: 1000;
+}
+.btn-back-top:hover { background: #e06900; transform: translateY(-2px); }
+
+/* ── Search highlight ────────────────────────────────────────────────────── */
+mark {
+  background: #fff0d6;
+  color: inherit;
+  font-weight: 700;
+  padding: 0;
+  border-radius: 2px;
+}
+
 /* ── Back-to-year button ─────────────────────────────────────────────────── */
 .btn-back-year {
   background: transparent;
@@ -89,9 +133,6 @@
 .select-accent:disabled { opacity: .5; }
 
 .bg-accent { background-color: var(--accent) !important; }
-
-/* ── Header logo ─────────────────────────────────────────────────────────── */
-#event-logo { height: 36px; width: auto; border-radius: 4px; display: none; }
 
 /* ── Stat chips ──────────────────────────────────────────────────────────── */
 .stat-chip { font-size: .8rem; font-weight: 600; color: #666; }
