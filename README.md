@@ -8,8 +8,8 @@ The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb/ra
 
 | | |
 |---|---|
-| Original | *(insert screenshot)* |
-| Mine | *(insert screenshot)* |
+| Original | ![Original website](frontend/images/before.png) |
+| Mine | ![My viewer](frontend/images/after.png) |
 
 ## Tech stack
 
@@ -92,8 +92,8 @@ Open [http://localhost:3001](http://localhost:3001).
 ## Running with Docker
 
 ```bash
-docker build -t income-eco-run .
-docker run -p 3001:3001 income-eco-run
+sudo docker build -t income-eco-run .
+sudo docker run -p 3001:3001 income-eco-run
 ```
 
 Open [http://localhost:3001](http://localhost:3001).
@@ -110,7 +110,7 @@ sudo kill -9 <PID>
 
 **2. Stop and remove old Docker containers:**
 ```bash
-docker rm -f $(docker ps -a -q)
+sudo docker ps -a -q | xargs -r sudo docker rm -f
 ```
 
 
