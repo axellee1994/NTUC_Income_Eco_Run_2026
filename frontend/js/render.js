@@ -53,7 +53,7 @@ function timeCell(chipTime, chipTimeSec) {
 }
 
 function fmtSec(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
   return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
            : `${m}:${String(sec).padStart(2,'0')}`;
 }
@@ -71,7 +71,7 @@ export function renderTable(participants, sub, searchTerm, sortCol, sortDir) {
     : '';
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No results found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No results found</td></tr>`;
     return;
   }
 
@@ -85,17 +85,10 @@ export function renderTable(participants, sub, searchTerm, sortCol, sortDir) {
     </tr>`).join('');
 }
 
-export function renderProgress(phase, done, total, found) {
+export function renderProgress(pct, text) {
   progressWrap.style.display = 'block';
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   progressFill.style.width = `${pct}%`;
-  if (phase === 1) {
-    progressText.textContent = `Discovering participants… ${done}/${total} searches · ${found} found`;
-    chipLoaded.textContent = `Found: ${found}`;
-  } else {
-    progressText.textContent = `Fetching timing data… ${done.toLocaleString()}/${total.toLocaleString()}`;
-    chipLoaded.textContent = `Loaded: ${done.toLocaleString()}/${total.toLocaleString()}`;
-  }
+  progressText.textContent = text;
 }
 
 export function hideProgress() {

@@ -1,9 +1,12 @@
-import { getEvent }                                                        from './api.js';
-import { state }                                                             from './state.js';
-import { races as STATIC_RACES }                                             from './races/index.js';
-import { collectParticipantIds, fetchAllTiming, saveCache, loadCache }       from './loader.js';
-import { computePositions, renderTable, renderProgress, hideProgress }       from './render.js';
-import { YEARS }                                                             from './years.js';
+import { getEvent }                                                              from './api.js';
+import { state }                                                                   from './state.js';
+import { races as STATIC_RACES }                                                   from './races/index.js';
+import { collectAndFetchAll, saveCache, loadCache, pruneExpiredCache }             from './loader.js';
+import { computePositions, renderTable, renderProgress, hideProgress }             from './render.js';
+import { YEARS }                                                                   from './years.js';
+
+// Remove stale cache entries from previous sessions on startup
+pruneExpiredCache();
 
 const landingScreen = document.getElementById('landing-screen');
 const app           = document.getElementById('app');
@@ -21,20 +24,39 @@ const backBtn       = document.getElementById('back-btn');
 // ── Year selection ────────────────────────────────────────────────────────────
 
 document.querySelectorAll('.btn-year').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const year = btn.dataset.year;
     const cfg  = YEARS[year];
     if (!cfg) return;
+
+    // Disable all buttons and show a loading indicator on the clicked one
+    const allBtns = document.querySelectorAll('.btn-year');
+    allBtns.forEach(b => { b.disabled = true; });
+    btn.textContent = `${year}…`;
+
     state.selectedYear = year;
     state.eventCode    = cfg.code;
+
+    // Fetch event data before transitioning so the dashboard appears ready
+    await initApp();
+
     landingScreen.style.display = 'none';
     app.style.display = 'block';
-    initApp();
+
+    // Restore button states for when the user navigates back
+    allBtns.forEach(b => {
+      b.disabled = false;
+      b.textContent = b.dataset.year;
+    });
   });
 });
 
+// ── Back button ───────────────────────────────────────────────────────────────
+
 backBtn.addEventListener('click', () => {
-  // Reset app state
+  if (state.loading) return; // block mid-load navigation
+
+  // Reset state
   state.selectedYear  = null;
   state.eventCode     = null;
   state.event         = null;
@@ -43,6 +65,7 @@ backBtn.addEventListener('click', () => {
   state.participants  = [];
   state.loading       = false;
   state.searchTerm    = '';
+
   // Reset UI
   eventLogo.style.display = 'none';
   eventName.textContent   = 'Loading event…';
@@ -54,6 +77,7 @@ backBtn.addEventListener('click', () => {
   loadBtn.disabled        = false;
   hideProgress();
   tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Select a race to begin</td></tr>';
+
   app.style.display           = 'none';
   landingScreen.style.display = 'flex';
 });
@@ -110,12 +134,25 @@ raceSelect.addEventListener('change', () => {
   state.participants = [];
   state.searchTerm   = '';
   searchInput.value  = '';
-  const sub = currentSub();
-  setInfoBar(sub);
-  setTableMessage('Click ▶ Load Results to fetch timing data');
-  loadBtn.style.display = 'inline-block';
-  loadBtn.disabled = false;
   hideProgress();
+  setInfoBar(currentSub());
+
+  // If this race was loaded before, restore it from cache immediately
+  const cached = loadCache(state.selectedYear, id);
+  if (cached) {
+    state.participants = cached;
+    computePositions(state.participants);
+    renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
+    chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()} (cached)`;
+    loadBtn.style.display = 'inline-block';
+    loadBtn.disabled = false;
+    searchInput.disabled = false;
+  } else {
+    setTableMessage('Click ▶ Load Results to fetch timing data');
+    loadBtn.style.display = 'inline-block';
+    loadBtn.disabled = false;
+    searchInput.disabled = true;
+  }
 });
 
 // ── Load button ───────────────────────────────────────────────────────────────
@@ -130,53 +167,63 @@ loadBtn.addEventListener('click', () => {
 async function loadRace(subEventId) {
   if (state.loading) return;
   state.loading = true;
-  loadBtn.disabled = true;
-  searchInput.disabled = true;
+  loadBtn.disabled      = true;
+  backBtn.disabled      = true;
+  raceSelect.disabled   = true; // prevent switching races mid-load
+  searchInput.disabled  = true;
 
-  const cached = loadCache(state.selectedYear, subEventId);
-  if (cached) {
-    state.participants = cached;
-    computePositions(state.participants);
-    renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
-    chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()} (cached)`;
-    searchInput.disabled = false;
-    loadBtn.disabled = false;
-    state.loading = false;
-    return;
-  }
-
-  setTableMessage('Discovering participants…');
-
-  // Phase 1 — collect IDs
-  const participants = await collectParticipantIds(
-    state.eventCode,
-    subEventId,
-    (done, total, found) => renderProgress(1, done, total, found)
-  );
-
-  state.participants = participants;
-  setTableMessage(`Found ${participants.length.toLocaleString()} participants. Fetching timing…`);
-  renderProgress(2, 0, participants.length, participants.length);
-
-  // Phase 2 — fetch timing, render in batches
-  let lastRender = 0;
-  await fetchAllTiming(state.eventCode, participants, (done, total) => {
-    renderProgress(2, done, total, total);
-    if (done - lastRender >= 50 || done === total) {
-      lastRender = done;
+  try {
+    const cached = loadCache(state.selectedYear, subEventId);
+    if (cached) {
+      state.participants = cached;
       computePositions(state.participants);
       renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
+      chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()} (cached)`;
+      return;
     }
-  });
 
-  computePositions(state.participants);
-  renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
-  saveCache(state.selectedYear, subEventId, state.participants);
-  hideProgress();
-  chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()}`;
-  searchInput.disabled = false;
-  loadBtn.disabled = false;
-  state.loading = false;
+    state.participants = []; // live array — populated in place during fetch
+    setTableMessage('Loading…');
+    let lastRender = 0;
+
+    await collectAndFetchAll(
+      state.eventCode,
+      subEventId,
+      state.participants,
+      ({ searchDone, searchTotal, found, timingDone }) => {
+        // Progress bar tracks timing completion (the slower, meaningful metric)
+        const pct  = found > 0 ? Math.round((timingDone / found) * 100) : 0;
+        const text = searchDone < searchTotal
+          ? `Searching ${searchDone}/${searchTotal} · ${timingDone.toLocaleString()} / ${found.toLocaleString()} loaded`
+          : `Fetching timing… ${timingDone.toLocaleString()} / ${found.toLocaleString()}`;
+        renderProgress(pct, text);
+        chipLoaded.textContent = `Loaded: ${timingDone.toLocaleString()} / ${found.toLocaleString()}`;
+
+        // Re-render table as batches of 50 timing results arrive
+        if (timingDone - lastRender >= 50) {
+          lastRender = timingDone;
+          computePositions(state.participants);
+          renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
+        }
+      }
+    );
+
+    computePositions(state.participants);
+    renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
+    saveCache(state.selectedYear, subEventId, state.participants);
+    chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()}`;
+
+  } catch (err) {
+    console.error('[loadRace]', err);
+    setTableMessage('Failed to load results. Please try again.');
+  } finally {
+    hideProgress();
+    state.loading         = false;
+    loadBtn.disabled      = false;
+    backBtn.disabled      = false;
+    raceSelect.disabled   = false;
+    searchInput.disabled  = false;
+  }
 }
 
 // ── Bootstrap (called after year is chosen) ───────────────────────────────────

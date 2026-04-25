@@ -12,7 +12,7 @@ The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb) o
 | 2025 | `ru6ha7aauyfgsk4b` | [results.raceroster.com](https://results.raceroster.com/v3/events/ru6ha7aauyfgsk4b) |
 | 2026 | `agmtjs3rt7d9e5bb` | [results.raceroster.com](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb) |
 
-On load, you're shown a year-selection screen. Pick a year, and the dashboard fetches that year's race list from the API. Results are cached separately per year in `localStorage`.
+On load, a year-selection screen appears. Pick a year, and the dashboard fetches that year's race list from the API. A **← Year** button in the navbar returns you to the selector at any time.
 
 ## Original website vs. mine
 
@@ -32,19 +32,22 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
 | **CSS** | [Bootstrap 5.3](https://getbootstrap.com/) (CDN) + small custom overrides for the brand accent colour |
 | **API** | RaceRoster v2 REST API (`results.raceroster.com`) |
 | **Proxy** | Local Node server forwards `/api/*` to RaceRoster to avoid CORS |
-| **Caching** | Browser `localStorage` (1-hour TTL, namespaced by year) |
+| **Caching** | Browser `localStorage` (permanent, namespaced by year + race ID) |
 | **Deployment** | Docker (single-stage Alpine image) |
 
 ## Features
 
 - Year-selection landing page (2024, 2025, 2026)
 - Race category dropdown loaded from the live event API
-- Discovers every participant via ~162 parallel prefix searches (a–z, 10–145)
-- Fetches chip times 30 at a time and renders the table as data arrives
+- Pipelined loading — timing fetches start as soon as each participant is discovered, both phases run concurrently
+- 20 parallel prefix searches (a–z, 10–145) to discover every participant
+- Up to 50 concurrent timing fetches, streamed into the table as they arrive
 - Search by name or bib number
 - Sort by position, bib, name, or chip time
 - Gold/silver/bronze highlights for the top 3
-- 1-hour `localStorage` cache per year — reopening the same race is instant
+- Permanent `localStorage` cache per year — results are final, so reopening any race is instant
+- Switching to a previously loaded race restores it from cache immediately, no button click needed
+- Race dropdown is locked during an active load to prevent mid-flight state corruption
 - Falls back to a baked-in static race list (2026 only) if the API is unreachable
 
 ## Project structure
@@ -58,7 +61,7 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
     └── js/
         ├── app.js             # Bootstrap, event wiring, load orchestration
         ├── api.js             # Fetch wrappers for RaceRoster v2 API
-        ├── loader.js          # Participant discovery, timing fetch, localStorage cache
+        ├── loader.js          # Pipelined discovery + timing fetch, semaphore, cache
         ├── render.js          # Table rendering, sorting/filtering, progress bar
         ├── state.js           # Shared mutable state (event code, selection, participants)
         ├── years.js           # Year → event code mapping (2024, 2025, 2026)
@@ -91,6 +94,16 @@ The `races/` directory contains baked-in race configs for 2026, used when the AP
 | `1_2_km_pets.js` | 1.2KM - Pets | 255216 | 254 |
 | `700m_pets.js` | 700m - Pets | 255217 | 68 |
 
+## Caching
+
+Results are cached permanently in `localStorage` under the key `race_{year}_{subEventId}`. Since all three years are past events with finalised results, there is no TTL — the cache never expires on its own.
+
+To force a fresh fetch (e.g. if results were corrected), clear `localStorage` in browser devtools:
+
+```js
+localStorage.clear()
+```
+
 ## Running locally
 
 Need Node.js — that's it, no `npm install`.
@@ -112,7 +125,7 @@ Open [http://localhost:3001](http://localhost:3001).
 
 ### Troubleshooting port conflicts
 
-If this error is encountered:"address already in use" or "port is already allocated" error, to free up port 3001 and clear out lingering Docker containers, run these commands.
+If you see "address already in use" or "port is already allocated", free up port 3001 with:
 
 **1. Find what is using port 3001 and kill its PID:**
 ```bash
@@ -125,10 +138,11 @@ sudo kill -9 <PID>
 sudo docker ps -a -q | xargs -r sudo docker rm -f
 ```
 
-
 ## How it works
 
-1. On load, a year-selection screen appears. Choosing a year sets the corresponding RaceRoster event code and fetches the race list from the API. If that fails, 2026 falls back to the static configs in `races/`.
-2. Clicking **▶ Load Results** fires off ~162 search queries in parallel to discover every participant ID in the selected category.
-3. It then fetches individual timing records (30 at a time) and streams results into the table as they arrive.
-4. Everything gets cached in `localStorage` for an hour (keyed by year + race ID) — next time you open the same race it loads instantly.
+1. A year-selection screen appears on load. Choosing a year sets the RaceRoster event code and fetches the race list from the API. If that fails, 2026 falls back to the static configs in `races/`.
+2. Clicking **▶ Load Results** fires off 162 prefix searches (a–z, 10–145) at 20 concurrent to discover every participant ID in the selected race.
+3. Timing fetches begin immediately as participants are discovered — both phases run in parallel rather than sequentially, with up to 50 concurrent timing requests.
+4. The table updates live every 50 records as timing data arrives.
+5. The completed result set is cached permanently in `localStorage` keyed by year and race ID — subsequent loads are instant.
+6. Switching races checks the cache first. If data is already there it renders immediately; otherwise the **▶ Load Results** button is shown. The race dropdown is disabled while a load is in progress to prevent state corruption.

@@ -48,10 +48,11 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.btn-year:hover {
+.btn-year:hover:not(:disabled) {
   background: #ff7600;
   color: #fff;
 }
+.btn-year:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Back-to-year button ─────────────────────────────────────────────────── */
 .btn-back-year {
@@ -62,7 +63,8 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.btn-back-year:hover { border-color: #ff7600; color: #ff7600; }
+.btn-back-year:hover:not(:disabled) { border-color: #ff7600; color: #ff7600; }
+.btn-back-year:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Brand accent (#ff7600) ──────────────────────────────────────────────── */
 :root { --accent: #ff7600; }
