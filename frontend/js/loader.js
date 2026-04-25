@@ -7,21 +7,22 @@ export const SEARCH_PHRASES = [...LETTERS, ...PREFIXES_2, ...PREFIXES_3];
 
 const CACHE_TTL = 60 * 60 * 1000;
 
-export function saveCache(subEventId, participants) {
+export function saveCache(year, subEventId, participants) {
   try {
-    localStorage.setItem(`race_${subEventId}`, JSON.stringify({
+    localStorage.setItem(`race_${year}_${subEventId}`, JSON.stringify({
       ts: Date.now(),
       participants,
     }));
   } catch { /* quota exceeded — ignore */ }
 }
 
-export function loadCache(subEventId) {
+export function loadCache(year, subEventId) {
   try {
-    const raw = localStorage.getItem(`race_${subEventId}`);
+    const key = `race_${year}_${subEventId}`;
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { ts, participants } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(`race_${subEventId}`); return null; }
+    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(key); return null; }
     return participants;
   } catch { return null; }
 }

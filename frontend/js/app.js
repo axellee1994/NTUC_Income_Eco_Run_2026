@@ -1,20 +1,64 @@
-import { getEvent }                                          from './api.js';
-import { state }                                             from './state.js';
-import { races as STATIC_RACES }                             from './races/index.js';
-import { collectParticipantIds, fetchAllTiming, saveCache, loadCache } from './loader.js';
-import { computePositions, renderTable, renderProgress, hideProgress } from './render.js';
+import { getEvent }                                                        from './api.js';
+import { state }                                                             from './state.js';
+import { races as STATIC_RACES }                                             from './races/index.js';
+import { collectParticipantIds, fetchAllTiming, saveCache, loadCache }       from './loader.js';
+import { computePositions, renderTable, renderProgress, hideProgress }       from './render.js';
+import { YEARS }                                                             from './years.js';
 
-const eventLogo  = document.getElementById('event-logo');
-const eventName  = document.getElementById('event-name');
-const raceSelect = document.getElementById('race-select');
-const chipRace   = document.getElementById('chip-race');
-const chipTotal  = document.getElementById('chip-total');
-const chipLoaded = document.getElementById('chip-loaded');
-const loadBtn    = document.getElementById('load-btn');
-const searchInput = document.getElementById('search-input');
-const tbody      = document.getElementById('tbody');
+const landingScreen = document.getElementById('landing-screen');
+const app           = document.getElementById('app');
+const eventLogo     = document.getElementById('event-logo');
+const eventName     = document.getElementById('event-name');
+const raceSelect    = document.getElementById('race-select');
+const chipRace      = document.getElementById('chip-race');
+const chipTotal     = document.getElementById('chip-total');
+const chipLoaded    = document.getElementById('chip-loaded');
+const loadBtn       = document.getElementById('load-btn');
+const searchInput   = document.getElementById('search-input');
+const tbody         = document.getElementById('tbody');
+const backBtn       = document.getElementById('back-btn');
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Year selection ────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.btn-year').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const year = btn.dataset.year;
+    const cfg  = YEARS[year];
+    if (!cfg) return;
+    state.selectedYear = year;
+    state.eventCode    = cfg.code;
+    landingScreen.style.display = 'none';
+    app.style.display = 'block';
+    initApp();
+  });
+});
+
+backBtn.addEventListener('click', () => {
+  // Reset app state
+  state.selectedYear  = null;
+  state.eventCode     = null;
+  state.event         = null;
+  state.subEvents     = [];
+  state.selectedId    = null;
+  state.participants  = [];
+  state.loading       = false;
+  state.searchTerm    = '';
+  // Reset UI
+  eventLogo.style.display = 'none';
+  eventName.textContent   = 'Loading event…';
+  raceSelect.innerHTML    = '<option value="">Loading races…</option>';
+  raceSelect.disabled     = true;
+  searchInput.value       = '';
+  searchInput.disabled    = true;
+  loadBtn.style.display   = 'none';
+  loadBtn.disabled        = false;
+  hideProgress();
+  tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Select a race to begin</td></tr>';
+  app.style.display           = 'none';
+  landingScreen.style.display = 'flex';
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function currentSub() {
   return state.subEvents.find(s => s.id === state.selectedId) ?? null;
@@ -27,10 +71,10 @@ function setInfoBar(sub) {
 }
 
 function setTableMessage(msg) {
-  tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${msg}</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${msg}</td></tr>`;
 }
 
-// ── Sort headers ─────────────────────────────────────────────────────────────
+// ── Sort headers ──────────────────────────────────────────────────────────────
 
 document.querySelectorAll('thead th.sortable').forEach(th => {
   th.addEventListener('click', () => {
@@ -39,11 +83,9 @@ document.querySelectorAll('thead th.sortable').forEach(th => {
       state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
     } else {
       state.sortCol = col;
-      state.sortDir = col === 'chipTimeSec' || col === 'position' ? 'asc' : 'asc';
+      state.sortDir = 'asc';
     }
-    document.querySelectorAll('thead th').forEach(h => {
-      h.classList.remove('sort-asc', 'sort-desc');
-    });
+    document.querySelectorAll('thead th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
     th.classList.add(state.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
     if (state.participants.length) {
       renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
@@ -51,7 +93,7 @@ document.querySelectorAll('thead th.sortable').forEach(th => {
   });
 });
 
-// ── Search ───────────────────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────────────────
 
 searchInput.addEventListener('input', () => {
   state.searchTerm = searchInput.value.trim();
@@ -64,9 +106,9 @@ searchInput.addEventListener('input', () => {
 
 raceSelect.addEventListener('change', () => {
   const id = Number(raceSelect.value);
-  state.selectedId  = id;
+  state.selectedId   = id;
   state.participants = [];
-  state.searchTerm  = '';
+  state.searchTerm   = '';
   searchInput.value  = '';
   const sub = currentSub();
   setInfoBar(sub);
@@ -91,7 +133,7 @@ async function loadRace(subEventId) {
   loadBtn.disabled = true;
   searchInput.disabled = true;
 
-  const cached = loadCache(subEventId);
+  const cached = loadCache(state.selectedYear, subEventId);
   if (cached) {
     state.participants = cached;
     computePositions(state.participants);
@@ -129,7 +171,7 @@ async function loadRace(subEventId) {
 
   computePositions(state.participants);
   renderTable(state.participants, currentSub(), state.searchTerm, state.sortCol, state.sortDir);
-  saveCache(subEventId, state.participants);
+  saveCache(state.selectedYear, subEventId, state.participants);
   hideProgress();
   chipLoaded.textContent = `Loaded: ${state.participants.length.toLocaleString()}`;
   searchInput.disabled = false;
@@ -137,19 +179,19 @@ async function loadRace(subEventId) {
   state.loading = false;
 }
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────────
+// ── Bootstrap (called after year is chosen) ───────────────────────────────────
 
-(async () => {
+async function initApp() {
+  const yearCfg = YEARS[state.selectedYear];
   try {
     const ev = await getEvent(state.eventCode);
     state.event = ev;
-    eventName.textContent = ev.name ?? 'Income Eco Run 2026';
-    if (ev.logoUrl) {
-      eventLogo.src = ev.logoUrl;
+    eventName.textContent = ev.name ?? yearCfg.label;
+    if (ev.logo) {
+      eventLogo.src = ev.logo;
       eventLogo.style.display = 'block';
     }
 
-    // API field is `subEvents`; filter to races with actual results
     state.subEvents = (ev.subEvents ?? []).filter(s => s.resultCount > 0);
 
     raceSelect.innerHTML = state.subEvents.map(s =>
@@ -157,7 +199,6 @@ async function loadRace(subEventId) {
     ).join('');
     raceSelect.disabled = false;
 
-    // Auto-select half marathon (first sub-event)
     if (state.subEvents.length) {
       state.selectedId = state.subEvents[0].id;
       raceSelect.value  = state.selectedId;
@@ -167,18 +208,23 @@ async function loadRace(subEventId) {
     }
   } catch (err) {
     console.warn('[app] API fetch failed, falling back to static race list:', err.message);
-    eventName.textContent = 'Income Eco Run 2026';
-    state.subEvents = STATIC_RACES;
-    raceSelect.innerHTML = STATIC_RACES.map(s =>
-      `<option value="${s.id}">${s.name} (${s.resultCount?.toLocaleString()})</option>`
-    ).join('');
-    raceSelect.disabled = false;
-    if (STATIC_RACES.length) {
-      state.selectedId = STATIC_RACES[0].id;
-      raceSelect.value  = state.selectedId;
-      setInfoBar(STATIC_RACES[0]);
-      loadBtn.style.display = 'inline-block';
-      setTableMessage('Click ▶ Load Results to fetch timing data');
+    eventName.textContent = yearCfg.label;
+    if (state.selectedYear === '2026') {
+      state.subEvents = STATIC_RACES;
+      raceSelect.innerHTML = STATIC_RACES.map(s =>
+        `<option value="${s.id}">${s.name} (${s.resultCount?.toLocaleString()})</option>`
+      ).join('');
+      raceSelect.disabled = false;
+      if (STATIC_RACES.length) {
+        state.selectedId = STATIC_RACES[0].id;
+        raceSelect.value  = state.selectedId;
+        setInfoBar(STATIC_RACES[0]);
+        loadBtn.style.display = 'inline-block';
+        setTableMessage('Click ▶ Load Results to fetch timing data');
+      }
+    } else {
+      raceSelect.innerHTML = '<option value="">No data available</option>';
+      setTableMessage('Could not load event data. Please try again later.');
     }
   }
-})();
+}

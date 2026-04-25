@@ -1,3 +1,69 @@
+/* ── Landing screen ──────────────────────────────────────────────────────── */
+#landing-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+}
+
+.landing-card {
+  text-align: center;
+  padding: 2.5rem 2rem;
+  color: #fff;
+}
+
+.landing-title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #ff7600;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.landing-sub {
+  font-size: 1rem;
+  color: #888;
+  margin-bottom: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.landing-prompt {
+  font-size: 0.9rem;
+  color: #aaa;
+  margin-bottom: 1.25rem;
+}
+
+.btn-year {
+  background: transparent;
+  border: 2px solid #ff7600;
+  color: #ff7600;
+  font-size: 1.6rem;
+  font-weight: 700;
+  padding: 0.75rem 2rem;
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 130px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-year:hover {
+  background: #ff7600;
+  color: #fff;
+}
+
+/* ── Back-to-year button ─────────────────────────────────────────────────── */
+.btn-back-year {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-back-year:hover { border-color: #ff7600; color: #ff7600; }
+
 /* ── Brand accent (#ff7600) ──────────────────────────────────────────────── */
 :root { --accent: #ff7600; }
 

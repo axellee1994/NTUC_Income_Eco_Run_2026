@@ -1,8 +1,18 @@
-# Income Eco Run 2026 – Results Viewer
+# Income Eco Run – Results Viewer
 
 Built by **axlee/axellee1994** because the official results page was incredibly shitty and had redundant information on it.
 
-The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb/race/255209) only shows your name, distance, and bib number — no placement, no chip time, nothing useful. So I built my own viewer with one goal: **find out where I actually placed.**
+The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb) only shows your name, distance, and bib number — no placement, no chip time, nothing useful. So I built my own viewer with one goal: **find out where I actually placed.**
+
+## Supported years
+
+| Year | Event code | Official results |
+|---|---|---|
+| 2024 | `p2m7kjgqjqkzjrwn` | [results.raceroster.com](https://results.raceroster.com/v3/events/p2m7kjgqjqkzjrwn) |
+| 2025 | `ru6ha7aauyfgsk4b` | [results.raceroster.com](https://results.raceroster.com/v3/events/ru6ha7aauyfgsk4b) |
+| 2026 | `agmtjs3rt7d9e5bb` | [results.raceroster.com](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb) |
+
+On load, you're shown a year-selection screen. Pick a year, and the dashboard fetches that year's race list from the API. Results are cached separately per year in `localStorage`.
 
 ## Original website vs. mine
 
@@ -22,19 +32,20 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
 | **CSS** | [Bootstrap 5.3](https://getbootstrap.com/) (CDN) + small custom overrides for the brand accent colour |
 | **API** | RaceRoster v2 REST API (`results.raceroster.com`) |
 | **Proxy** | Local Node server forwards `/api/*` to RaceRoster to avoid CORS |
-| **Caching** | Browser `localStorage` (1-hour TTL) |
+| **Caching** | Browser `localStorage` (1-hour TTL, namespaced by year) |
 | **Deployment** | Docker (single-stage Alpine image) |
 
 ## Features
 
+- Year-selection landing page (2024, 2025, 2026)
 - Race category dropdown loaded from the live event API
 - Discovers every participant via ~162 parallel prefix searches (a–z, 10–145)
 - Fetches chip times 30 at a time and renders the table as data arrives
 - Search by name or bib number
 - Sort by position, bib, name, or chip time
 - Gold/silver/bronze highlights for the top 3
-- 1-hour `localStorage` cache — reopening the same race is instant
-- Falls back to a baked-in static race list if the API is unreachable
+- 1-hour `localStorage` cache per year — reopening the same race is instant
+- Falls back to a baked-in static race list (2026 only) if the API is unreachable
 
 ## Project structure
 
@@ -50,6 +61,7 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
         ├── loader.js          # Participant discovery, timing fetch, localStorage cache
         ├── render.js          # Table rendering, sorting/filtering, progress bar
         ├── state.js           # Shared mutable state (event code, selection, participants)
+        ├── years.js           # Year → event code mapping (2024, 2025, 2026)
         └── races/
             ├── index.js       # Loader — imports and re-exports all races as an array
             ├── 21_1_km.js     # 21.1KM Half Marathon (id 255209)
@@ -63,7 +75,9 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
             └── 700m_pets.js   # 700m - Pets        (id 255217)
 ```
 
-## Races
+## 2026 static race fallback
+
+The `races/` directory contains baked-in race configs for 2026, used when the API is unreachable. No equivalent exists for 2024/2025 — if those years can't be fetched, an error message is shown instead.
 
 | File | Race | Sub-event ID | Participants |
 |---|---|---|---|
@@ -76,8 +90,6 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
 | `700m_kids.js` | 700m - Kids | 255215 | 293 |
 | `1_2_km_pets.js` | 1.2KM - Pets | 255216 | 254 |
 | `700m_pets.js` | 700m - Pets | 255217 | 68 |
-
-Each file exports `{ id, name, resultCount }`. `races/index.js` pulls them all into a single array that `app.js` uses as a fallback when the API is unreachable.
 
 ## Running locally
 
@@ -116,7 +128,7 @@ sudo docker ps -a -q | xargs -r sudo docker rm -f
 
 ## How it works
 
-1. On load, the app hits the RaceRoster API with the event code (`agmtjs3rt7d9e5bb`) to get the race list. If that fails, it falls back to the static configs in `races/`.
+1. On load, a year-selection screen appears. Choosing a year sets the corresponding RaceRoster event code and fetches the race list from the API. If that fails, 2026 falls back to the static configs in `races/`.
 2. Clicking **▶ Load Results** fires off ~162 search queries in parallel to discover every participant ID in the selected category.
-3. It then fetches individual timing records (20 at a time) and streams results into the table as they arrive.
-4. Everything gets cached in `localStorage` for an hour — next time you open the same race it loads instantly.
+3. It then fetches individual timing records (30 at a time) and streams results into the table as they arrive.
+4. Everything gets cached in `localStorage` for an hour (keyed by year + race ID) — next time you open the same race it loads instantly.
