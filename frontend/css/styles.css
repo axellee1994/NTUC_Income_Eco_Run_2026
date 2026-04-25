@@ -1,0 +1,56 @@
+/* ── Brand accent (#ff7600) ──────────────────────────────────────────────── */
+:root { --accent: #ff7600; }
+
+.btn-accent {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  display: none;
+}
+.btn-accent:hover:not(:disabled) { background-color: #e06900; border-color: #e06900; color: #fff; }
+.btn-accent:disabled { opacity: .5; }
+
+.select-accent {
+  background-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--accent);
+}
+.select-accent option { background: #333; }
+.select-accent:disabled { opacity: .5; }
+
+.bg-accent { background-color: var(--accent) !important; }
+
+/* ── Header logo ─────────────────────────────────────────────────────────── */
+#event-logo { height: 36px; width: auto; border-radius: 4px; display: none; }
+
+/* ── Stat chips ──────────────────────────────────────────────────────────── */
+.stat-chip { font-size: .8rem; font-weight: 600; color: #666; }
+.stat-chip span { color: #1a1a1a; font-size: .95rem; }
+
+/* ── Progress wrapper hidden by default ──────────────────────────────────── */
+#progress-wrap { display: none; }
+
+/* ── Sortable column headers ─────────────────────────────────────────────── */
+thead th.sortable { cursor: pointer; user-select: none; }
+thead th.sortable:hover { background: #222; }
+thead th.sort-asc::after  { content: ' ↑'; color: var(--accent); }
+thead th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+
+/* ── Table cell variants ─────────────────────────────────────────────────── */
+td.pos        { font-weight: 700; font-size: 1rem; color: var(--accent); text-align: center; }
+td.pos.gold   { color: #d4ac0d; }
+td.pos.silver { color: #8e9eab; }
+td.pos.bronze { color: #c37a44; }
+td.bib        { font-family: monospace; font-size: .85rem; color: #666; }
+td.time       { font-family: monospace; font-weight: 600; font-size: .95rem; }
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 60px 20px; color: #666; font-size: .95rem; }
+
+/* ── Responsive: hide less important columns on small screens ────────────── */
+@media (max-width: 640px) {
+  td.event, td.total { display: none; }
+  thead th:nth-child(4), thead th:nth-child(5) { display: none; }
+}
