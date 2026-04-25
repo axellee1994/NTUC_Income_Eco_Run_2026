@@ -29,7 +29,7 @@ No npm packages, no build step — just the platform plus Bootstrap for styling.
 
 - Race category dropdown loaded from the live event API
 - Discovers every participant via ~162 parallel prefix searches (a–z, 10–145)
-- Fetches chip times 20 at a time and renders the table as data arrives
+- Fetches chip times 30 at a time and renders the table as data arrives
 - Search by name or bib number
 - Sort by position, bib, name, or chip time
 - Gold/silver/bronze highlights for the top 3
