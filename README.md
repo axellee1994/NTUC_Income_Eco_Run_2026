@@ -7,6 +7,7 @@ The [official site](https://results.raceroster.com/v3/events/agmtjs3rt7d9e5bb/ra
 ## Original website vs. mine
 
 | | |
+|---|---|
 | Original | ![Original website](frontend/images/before.png) |
 | Mine | ![My viewer](frontend/images/after.png) |
 
